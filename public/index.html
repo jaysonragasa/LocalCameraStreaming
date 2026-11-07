@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>AuraCam | Browser Camera & Audio Streaming Station</title>
+  <meta name="description" content="Stream your laptop camera and microphone directly through your web browser with ultra low latency WebRTC, live audio, and motion detection.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Top Global Header -->
+    <header class="top-nav">
+      <div class="brand">
+        <div class="brand-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+            <circle cx="12" cy="13" r="4"></circle>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <span class="brand-title">AuraCam <span class="badge-tag" id="header-mode-badge">HOST</span></span>
+          <span class="brand-subtitle font-mono" id="network-ip-display">Detecting Network IP...</span>
+        </div>
+      </div>
+
+      <!-- Mode Switcher Tabs -->
+      <div class="mode-switcher-container">
+        <div class="mode-tabs">
+          <button id="btn-mode-host" class="mode-tab-btn active">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon-tab">
+              <polygon points="23 7 16 12 23 17 23 7"></polygon>
+              <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+            </svg>
+            <span>Host (Camera)</span>
+          </button>
+          <button id="btn-mode-viewer" class="mode-tab-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon-tab">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+            </svg>
+            <span>Viewer (Watch)</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Nav Action Buttons -->
+      <div class="nav-actions">
+        <button id="btn-qr-modal" class="btn btn-secondary btn-icon-text" title="Connect Phone or Tablet">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon">
+            <rect x="3" y="3" width="7" height="7"></rect>
+            <rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="14" y="14" width="7" height="7"></rect>
+            <rect x="3" y="14" width="7" height="7"></rect>
+          </svg>
+          <span class="btn-text-responsive">Connect Device</span>
+        </button>
+
+        <button id="btn-settings-toggle" class="btn btn-icon" title="Settings & Motion Detection">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Viewport Area -->
+    <main class="stream-main">
+      <div class="video-container" id="video-wrapper">
+        
+        <!-- =================== HOST (BROADCASTER) VIEW =================== -->
+        <div id="host-view" class="view-panel">
+          <!-- Standby Start Screen when camera not active -->
+          <div id="host-standby-screen" class="standby-screen">
+            <div class="standby-card">
+              <div class="standby-icon-halo">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="standby-icon">
+                  <polygon points="23 7 16 12 23 17 23 7"></polygon>
+                  <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+                </svg>
+              </div>
+              <h2 class="standby-title">Launch Camera & Audio Station</h2>
+              <p class="standby-desc">
+                Your browser will capture your webcam and microphone to stream directly to your phone, tablet, or another computer.
+              </p>
+              
+              <div class="standby-actions">
+                <button id="btn-start-broadcasting" class="btn btn-emerald btn-lg btn-glow">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon">
+                    <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                  </svg>
+                  <span>Start Camera & Broadcast</span>
+                </button>
+              </div>
+
+              <div class="standby-tips">
+                <span>🔒 Standard browser permission: Click <strong>Allow</strong> when prompted.</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Active Host Video Element -->
+          <video id="host-video" autoplay playsinline muted class="stream-video hidden"></video>
+
+          <!-- Motion Detection Overlay Canvas -->
+          <canvas id="motion-canvas" class="motion-overlay hidden"></canvas>
+
+          <!-- Motion Detected Visual Alert Banner -->
+          <div id="host-motion-banner" class="motion-banner hidden">
+            <span class="motion-pulse-dot"></span>
+            <span>🚨 MOTION DETECTED IN CAMERA FEED</span>
+          </div>
+
+          <!-- Floating Host Top HUD -->
+          <div class="stream-hud top-hud">
+            <div class="hud-left">
+              <div class="status-indicator" id="host-status-badge">
+                <span class="status-dot"></span>
+                <span class="status-text" id="host-status-text">OFFLINE</span>
+              </div>
+              <div class="hud-pill" id="host-hud-viewers">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="hud-icon">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="9" cy="7" r="4"></circle>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+                <span id="host-stat-viewers">0 viewers</span>
+              </div>
+            </div>
+
+            <div class="hud-right">
+              <div class="hud-pill" id="host-hud-pin" title="Active Room Security PIN">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="hud-icon">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+                <span class="label">PIN</span>
+                <span class="value font-mono" id="host-stat-pin">1234</span>
+              </div>
+              <div class="hud-pill" id="host-hud-fps">
+                <span class="label">FPS</span>
+                <span class="value" id="host-stat-fps">30</span>
+              </div>
+              <div class="hud-pill" id="host-hud-res">
+                <span class="value" id="host-stat-res">1280x720</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Host Bottom Controls Bar -->
+          <div class="stream-hud bottom-hud">
+            <div class="controls-left">
+              <!-- Stop Camera Button -->
+              <button id="btn-stop-broadcasting" class="control-btn btn-danger-glow" title="Stop Camera Broadcast">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon">
+                  <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
+                </svg>
+              </button>
+
+              <!-- Host Mic Toggle & Level Meter -->
+              <div class="audio-control-group">
+                <button id="btn-host-toggle-mic" class="control-btn" title="Mute/Unmute Mic">
+                  <svg id="host-icon-mic-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon">
+                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                    <line x1="12" y1="19" x2="12" y2="23"></line>
+                    <line x1="8" y1="23" x2="16" y2="23"></line>
+                  </svg>
+                  <svg id="host-icon-mic-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon hidden">
+                    <line x1="1" y1="1" x2="23" y2="23"></line>
+                    <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"></path>
+                    <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"></path>
+                    <line x1="12" y1="19" x2="12" y2="23"></line>
+                    <line x1="8" y1="23" x2="16" y2="23"></line>
+                  </svg>
+                </button>
+                <div class="vu-meter" title="Microphone Input Level">
+                  <div class="vu-bar" id="host-vu-1"></div>
+                  <div class="vu-bar" id="host-vu-2"></div>
+                  <div class="vu-bar" id="host-vu-3"></div>
+                  <div class="vu-bar" id="host-vu-4"></div>
+                </div>
+              </div>
+
+              <!-- Motion Detection Quick Switch -->
+              <button id="btn-toggle-motion" class="control-btn" title="Toggle Motion Detection">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                </svg>
+              </button>
+            </div>
+
+            <div class="controls-center">
+              <!-- Snapshot Button -->
+              <button id="btn-host-snapshot" class="snapshot-btn" title="Capture Photo Snapshot">
+                <div class="snapshot-inner">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon-camera">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                    <circle cx="12" cy="13" r="4"></circle>
+                  </svg>
+                </div>
+              </button>
+            </div>
+
+            <div class="controls-right">
+              <!-- Fullscreen -->
+              <button id="btn-host-fullscreen" class="control-btn" title="Fullscreen (F)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon">
+                  <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- =================== VIEWER VIEW =================== -->
+        <div id="viewer-view" class="view-panel hidden">
+          <!-- Viewer PIN Security Challenge Card -->
+          <div id="viewer-pin-card" class="standby-screen hidden" style="z-index: 35;">
+            <div class="standby-card pin-card">
+              <div class="standby-icon-halo">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="standby-icon">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+              </div>
+              <h2 class="standby-title">Enter Security PIN</h2>
+              <p class="standby-desc">
+                This live camera stream is protected. Enter the 4-digit PIN configured on the laptop to view.
+              </p>
+              
+              <div class="pin-inputs-row">
+                <input type="password" id="pin-box-1" maxlength="1" class="pin-box font-mono" inputmode="numeric" pattern="[0-9]*" autofocus>
+                <input type="password" id="pin-box-2" maxlength="1" class="pin-box font-mono" inputmode="numeric" pattern="[0-9]*">
+                <input type="password" id="pin-box-3" maxlength="1" class="pin-box font-mono" inputmode="numeric" pattern="[0-9]*">
+                <input type="password" id="pin-box-4" maxlength="1" class="pin-box font-mono" inputmode="numeric" pattern="[0-9]*">
+              </div>
+
+              <div id="pin-error-text" class="pin-error-alert hidden">
+                Incorrect PIN. Please try again.
+              </div>
+
+              <button id="btn-submit-viewer-pin" class="btn btn-emerald btn-lg" style="width: 100%;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <span>Unlock Stream</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Standby Screen when Host is Offline -->
+          <div id="viewer-standby-screen" class="standby-screen">
+            <div class="standby-card">
+              <div class="standby-icon-halo pulse-slow">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="standby-icon">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="8" x2="12" y2="12"></line>
+                  <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+              </div>
+              <h2 class="standby-title">Waiting for Host Camera...</h2>
+              <p class="standby-desc">
+                The camera station on your laptop has not started broadcasting yet. As soon as you click <strong>"Start Camera"</strong> on the laptop, the stream will begin automatically!
+              </p>
+              <div class="spinner-dot-flow">
+                <span></span><span></span><span></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Remote Live Video Stream -->
+          <video id="viewer-video" autoplay playsinline class="stream-video hidden"></video>
+
+          <!-- Viewer Unmute Banner (Browser policy helper) -->
+          <div id="viewer-unmute-banner" class="unmute-banner hidden">
+            <div class="unmute-content">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon-pulse">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                <line x1="23" y1="9" x2="17" y2="15"></line>
+                <line x1="17" y1="9" x2="23" y2="15"></line>
+              </svg>
+              <span>Audio is muted by browser policy. Click to hear live audio.</span>
+            </div>
+            <button id="btn-viewer-banner-unmute" class="btn btn-emerald btn-sm">Unmute</button>
+          </div>
+
+          <!-- Viewer Motion Alert Toast -->
+          <div id="viewer-motion-banner" class="motion-banner hidden">
+            <span class="motion-pulse-dot"></span>
+            <span id="viewer-motion-text">🚨 MOTION DETECTED BY HOST CAMERA</span>
+          </div>
+
+          <!-- Viewer Top HUD -->
+          <div class="stream-hud top-hud">
+            <div class="hud-left">
+              <div class="status-indicator" id="viewer-status-badge">
+                <span class="status-dot"></span>
+                <span class="status-text" id="viewer-status-text">CONNECTING</span>
+              </div>
+              <div class="hud-pill" id="viewer-hud-label">
+                <span class="value">LIVE PEER STREAM</span>
+              </div>
+            </div>
+
+            <div class="hud-right">
+              <div class="hud-pill" id="viewer-hud-rtt">
+                <span class="label">RTT</span>
+                <span class="value" id="viewer-stat-rtt">-- ms</span>
+              </div>
+              <div class="hud-pill" id="viewer-hud-fps">
+                <span class="label">FPS</span>
+                <span class="value" id="viewer-stat-fps">--</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Viewer Bottom Controls -->
+          <div class="stream-hud bottom-hud">
+            <div class="controls-left">
+              <div class="audio-control-group">
+                <button id="btn-viewer-toggle-audio" class="control-btn" title="Toggle Live Sound">
+                  <svg id="viewer-icon-audio-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon">
+                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                  </svg>
+                  <svg id="viewer-icon-audio-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon hidden">
+                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                    <line x1="23" y1="9" x2="17" y2="15"></line>
+                    <line x1="17" y1="9" x2="23" y2="15"></line>
+                  </svg>
+                </button>
+                <input type="range" id="viewer-volume-slider" min="0" max="1" step="0.05" value="1" class="volume-range">
+              </div>
+            </div>
+
+            <div class="controls-center">
+              <button id="btn-viewer-snapshot" class="snapshot-btn" title="Capture HD Photo">
+                <div class="snapshot-inner">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon-camera">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                    <circle cx="12" cy="13" r="4"></circle>
+                  </svg>
+                </div>
+              </button>
+            </div>
+
+            <div class="controls-right">
+              <button id="btn-viewer-fullscreen" class="control-btn" title="Fullscreen (F)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon">
+                  <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Shutter flash animation layer -->
+        <div id="shutter-flash" class="shutter-overlay"></div>
+      </div>
+    </main>
+
+    <!-- Side Settings Drawer -->
+    <aside id="settings-drawer" class="drawer">
+      <div class="drawer-header">
+        <h3 class="drawer-title">Settings & Motion</h3>
+        <button id="btn-close-drawer" class="btn btn-icon btn-sm">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="drawer-body">
+        <!-- Motion Detection Module Card -->
+        <div class="drawer-section">
+          <div class="motion-card">
+            <div class="motion-card-header">
+              <div class="motion-title-wrap">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="motion-icon">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                </svg>
+                <span class="motion-title">Motion Sensor</span>
+              </div>
+              <label class="switch-toggle">
+                <input type="checkbox" id="chk-motion-active">
+                <span class="slider"></span>
+              </label>
+            </div>
+            <p class="motion-desc">
+              Tracks visual frame differences in real time, overlays bounding boxes on motion areas, and sends instant alerts to connected viewers.
+            </p>
+            <div class="motion-setting-row">
+              <label for="range-motion-sensitivity">Sensitivity: <strong id="lbl-sensitivity">Medium</strong></label>
+              <input type="range" id="range-motion-sensitivity" min="10" max="60" value="25" class="range-field">
+            </div>
+          </div>
+        <!-- Room Security PIN Section -->
+        <div class="drawer-section">
+          <label class="section-label">Room Security PIN</label>
+          <div class="info-card">
+            <div class="info-row">
+              <span class="info-key">Protection PIN</span>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <input type="text" id="input-host-pin" maxlength="6" value="1234" class="input-pin-field font-mono" title="4-digit PIN">
+                <button id="btn-update-pin" class="btn btn-emerald btn-sm">Update</button>
+              </div>
+            </div>
+            <p class="section-hint">
+              Viewers must enter this PIN to unlock and decrypt the live camera feed.
+            </p>
+          </div>
+        </div>
+
+        <!-- Camera Device Selector (Host only) -->
+        <div class="drawer-section host-only-section">
+          <label class="section-label" for="select-camera-device">Video Camera Input</label>
+          <select id="select-camera-device" class="select-field">
+            <option value="">Default Camera</option>
+          </select>
+        </div>
+
+        <!-- Microphone Device Selector (Host only) -->
+        <div class="drawer-section host-only-section">
+          <label class="section-label" for="select-mic-device">Microphone Input</label>
+          <select id="select-mic-device" class="select-field">
+            <option value="">Default Microphone</option>
+          </select>
+        </div>
+
+        <!-- Resolution (Host only) -->
+        <div class="drawer-section host-only-section">
+          <label class="section-label" for="select-video-res">Broadcast Resolution</label>
+          <select id="select-video-res" class="select-field">
+            <option value="1920x1080">1080p Full HD (1920x1080)</option>
+            <option value="1280x720" selected>720p HD (1280x720) [Recommended]</option>
+            <option value="640x480">480p SD (640x480)</option>
+          </select>
+        </div>
+
+        <!-- Network Info Card -->
+        <div class="drawer-section">
+          <label class="section-label">Server Connection</label>
+          <div class="info-card">
+            <div class="info-row">
+              <span class="info-key">Local Network IP</span>
+              <span class="info-val font-mono" id="drawer-lan-ip">127.0.0.1</span>
+            </div>
+            <div class="info-row">
+              <span class="info-key">Port</span>
+              <span class="info-val font-mono" id="drawer-port">3000</span>
+            </div>
+            <div class="info-row">
+              <span class="info-key">Connected Viewers</span>
+              <span class="info-val font-mono" id="drawer-viewers-count">0</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Connect Device / QR Code Modal -->
+    <div id="qr-modal" class="modal-backdrop hidden">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3 class="modal-title">Connect Phone or Tablet</h3>
+          <button id="btn-close-qr" class="btn btn-icon btn-sm">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p class="modal-desc">
+            Make sure your phone is connected to the same Wi-Fi, then scan this QR code with your phone camera or visit the URL below:
+          </p>
+          <div class="qr-canvas-wrap">
+            <canvas id="qr-canvas" width="220" height="220"></canvas>
+          </div>
+          <div class="copy-url-bar">
+            <input type="text" id="input-network-url" readonly value="http://localhost:3000" class="input-url font-mono">
+            <button id="btn-copy-url" class="btn btn-emerald btn-sm">Copy</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Snapshot Modal -->
+    <div id="snapshot-modal" class="modal-backdrop hidden">
+      <div class="modal-card snapshot-modal-card">
+        <div class="modal-header">
+          <h3 class="modal-title">Captured Snapshot</h3>
+          <button id="btn-close-snapshot" class="btn btn-icon btn-sm">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body snapshot-body">
+          <img id="snapshot-img-preview" alt="Snapshot Preview">
+          <div class="snapshot-actions">
+            <a id="btn-download-snapshot" download="auracam_snapshot.jpg" class="btn btn-emerald btn-icon-text">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              <span>Download Image</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="toast-container"></div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

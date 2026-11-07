@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>AuraCam | Ultra Low-Latency Camera & Audio Streaming</title>
+  <meta name="description" content="Real-time WebRTC and WebSocket camera streaming server with synchronized audio, sub-100ms latency, and live telemetry.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Top Navigation Bar -->
+    <header class="top-nav">
+      <div class="brand">
+        <div class="brand-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+            <circle cx="12" cy="13" r="4"></circle>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <span class="brand-title">AuraCam <span class="badge-pro">LIVE</span></span>
+          <span class="brand-subtitle" id="device-ip-badge">Detecting host IP...</span>
+        </div>
+      </div>
+
+      <div class="nav-actions">
+        <button id="btn-qr-modal" class="btn btn-secondary btn-icon-text" title="Connect Phone or Tablet">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon">
+            <rect x="3" y="3" width="7" height="7"></rect>
+            <rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="14" y="14" width="7" height="7"></rect>
+            <rect x="3" y="14" width="7" height="7"></rect>
+          </svg>
+          <span>Connect Device</span>
+        </button>
+
+        <button id="btn-settings-toggle" class="btn btn-icon" title="Stream Settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Stream Stage -->
+    <main class="stream-main">
+      <div class="video-wrapper" id="video-container">
+        <!-- Main Video Element -->
+        <video id="remote-video" autoplay playsinline></video>
+        
+        <!-- Fallback MJPEG Image (hidden by default) -->
+        <img id="mjpeg-video" class="hidden" alt="MJPEG Video Stream">
+
+        <!-- Shutter Flash Effect for Snapshots -->
+        <div id="shutter-flash" class="shutter-overlay"></div>
+
+        <!-- Autoplay Audio Unmute Prompt (Appears if browser policy blocks initial sound) -->
+        <div id="unmute-banner" class="unmute-banner hidden">
+          <div class="unmute-content">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon-pulse">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+              <line x1="23" y1="9" x2="17" y2="15"></line>
+              <line x1="17" y1="9" x2="23" y2="15"></line>
+            </svg>
+            <span>Audio is muted by browser policy. Click to hear live audio.</span>
+          </div>
+          <button id="btn-banner-unmute" class="btn btn-emerald btn-sm">Unmute Stream</button>
+        </div>
+
+        <!-- Floating Stream HUD Overlay -->
+        <div class="stream-hud top-hud">
+          <div class="hud-left">
+            <div class="status-indicator" id="stream-status-badge">
+              <span class="status-dot"></span>
+              <span class="status-text" id="stream-status-text">CONNECTING</span>
+            </div>
+            <div class="hud-pill" id="hud-viewers">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="hud-icon">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+              </svg>
+              <span id="stat-viewers">1 viewer</span>
+            </div>
+          </div>
+
+          <div class="hud-right">
+            <div class="hud-pill" id="hud-latency">
+              <span class="label">RTT</span>
+              <span class="value" id="stat-latency">-- ms</span>
+            </div>
+            <div class="hud-pill" id="hud-fps">
+              <span class="label">FPS</span>
+              <span class="value" id="stat-fps">--</span>
+            </div>
+            <div class="hud-pill" id="hud-resolution">
+              <span class="value" id="stat-resolution">HD 720p</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bottom Controls Bar (Glassmorphic) -->
+        <div class="stream-hud bottom-hud">
+          <div class="controls-left">
+            <!-- Play/Pause Toggle -->
+            <button id="btn-toggle-stream" class="control-btn" title="Pause / Resume Stream">
+              <svg id="icon-pause" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon">
+                <rect x="6" y="4" width="4" height="16"></rect>
+                <rect x="14" y="4" width="4" height="16"></rect>
+              </svg>
+              <svg id="icon-play" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon hidden">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+              </svg>
+            </button>
+
+            <!-- Audio Mute / Unmute & Live VU Meter -->
+            <div class="audio-control-group">
+              <button id="btn-toggle-audio" class="control-btn" title="Toggle Live Audio">
+                <svg id="icon-audio-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon">
+                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                  <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                </svg>
+                <svg id="icon-audio-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon hidden">
+                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                  <line x1="23" y1="9" x2="17" y2="15"></line>
+                  <line x1="17" y1="9" x2="23" y2="15"></line>
+                </svg>
+              </button>
+              
+              <!-- Live Audio Level Meter -->
+              <div class="vu-meter" title="Live Microphone Level">
+                <div class="vu-bar" id="vu-bar-1"></div>
+                <div class="vu-bar" id="vu-bar-2"></div>
+                <div class="vu-bar" id="vu-bar-3"></div>
+                <div class="vu-bar" id="vu-bar-4"></div>
+              </div>
+
+              <!-- Volume Slider -->
+              <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="1" class="volume-range" title="Volume">
+            </div>
+          </div>
+
+          <div class="controls-center">
+            <!-- Snapshot / Capture Button -->
+            <button id="btn-snapshot" class="snapshot-btn" title="Capture HD Photo">
+              <div class="snapshot-inner">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon-camera">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                  <circle cx="12" cy="13" r="4"></circle>
+                </svg>
+              </div>
+            </button>
+          </div>
+
+          <div class="controls-right">
+            <!-- Fullscreen Toggle -->
+            <button id="btn-fullscreen" class="control-btn" title="Toggle Fullscreen (F)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon">
+                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Side Settings & Future Features Drawer -->
+    <aside id="settings-drawer" class="drawer">
+      <div class="drawer-header">
+        <h3 class="drawer-title">Stream Configuration</h3>
+        <button id="btn-close-drawer" class="btn btn-icon btn-sm" title="Close Drawer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="drawer-body">
+        <!-- Streaming Protocol Selector -->
+        <div class="drawer-section">
+          <label class="section-label">Streaming Protocol</label>
+          <div class="tab-group">
+            <button class="tab-btn active" id="tab-webrtc" data-mode="webrtc">WebRTC (Ultra Low Latency)</button>
+            <button class="tab-btn" id="tab-mjpeg" data-mode="mjpeg">MJPEG Fallback</button>
+          </div>
+          <p class="section-hint">WebRTC provides synchronized audio and sub-100ms video directly over your Wi-Fi.</p>
+        </div>
+
+        <!-- Camera Resolution -->
+        <div class="drawer-section">
+          <label class="section-label" for="select-resolution">Webcam Resolution</label>
+          <select id="select-resolution" class="select-field">
+            <option value="1920x1080">1080p Full HD (1920x1080)</option>
+            <option value="1280x720" selected>720p HD (1280x720) [Recommended]</option>
+            <option value="640x480">480p SD (640x480)</option>
+          </select>
+        </div>
+
+        <!-- Server Information Card -->
+        <div class="drawer-section">
+          <label class="section-label">Host Information</label>
+          <div class="info-card">
+            <div class="info-row">
+              <span class="info-key">LAN IP Address</span>
+              <span class="info-val font-mono" id="drawer-lan-ip">--</span>
+            </div>
+            <div class="info-row">
+              <span class="info-key">Port</span>
+              <span class="info-val font-mono" id="drawer-port">8080</span>
+            </div>
+            <div class="info-row">
+              <span class="info-key">Server Uptime</span>
+              <span class="info-val font-mono" id="drawer-uptime">--</span>
+            </div>
+            <div class="info-row">
+              <span class="info-key">Microphone State</span>
+              <span class="info-val" id="drawer-audio-state">Active (48kHz)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Motion Detection Roadmap Card (Roadmap feature) -->
+        <div class="drawer-section">
+          <div class="motion-card">
+            <div class="motion-card-header">
+              <div class="motion-title-wrap">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="motion-icon">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                </svg>
+                <span class="motion-title">Motion Detection</span>
+              </div>
+              <span class="badge-coming-soon">Coming Soon</span>
+            </div>
+            <p class="motion-desc">
+              Automatic frame-difference motion tracking, alert notification triggers, and motion event recording will be activated in the next module update.
+            </p>
+            <div class="motion-preview-toggle">
+              <span>Enable Motion Sensor</span>
+              <input type="checkbox" id="chk-motion-preview" disabled class="toggle-switch">
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Connect Device Modal (with Live QR Code) -->
+    <div id="qr-modal" class="modal-backdrop hidden">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3 class="modal-title">Connect from Phone or Tablet</h3>
+          <button id="btn-close-qr" class="btn btn-icon btn-sm">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p class="modal-desc">
+            Ensure your phone or other device is connected to the same Wi-Fi network, then scan this QR code or navigate to the URL below:
+          </p>
+          <div class="qr-canvas-wrap">
+            <canvas id="qr-canvas" width="220" height="220"></canvas>
+          </div>
+          <div class="copy-url-bar">
+            <input type="text" id="input-network-url" readonly value="http://127.0.0.1:8080" class="input-url font-mono">
+            <button id="btn-copy-url" class="btn btn-emerald btn-sm">Copy</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Snapshot Preview Modal -->
+    <div id="snapshot-modal" class="modal-backdrop hidden">
+      <div class="modal-card snapshot-modal-card">
+        <div class="modal-header">
+          <h3 class="modal-title">Captured Snapshot</h3>
+          <button id="btn-close-snapshot" class="btn btn-icon btn-sm">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body snapshot-body">
+          <img id="snapshot-img-preview" alt="Snapshot Preview">
+          <div class="snapshot-actions">
+            <a id="btn-download-snapshot" download="snapshot.jpg" class="btn btn-emerald btn-icon-text">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              <span>Download Image</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="toast-container"></div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
